@@ -1,0 +1,155 @@
+openapi: 3.0.0
+
+info:
+  title: API de Autenticación — MMO Cursos
+  version: 1.0.0
+  description: Contrato de API para autenticación y gestión de usuarios.
+
+servers:
+  - url: http://localhost:3001/api/v1
+
+tags:
+  - name: Autenticación
+    description: Registro, login y perfil
+
+paths:
+  /auth/registro:
+    post:
+      tags:
+        - Autenticación
+      summary: Registrar usuario
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegistroRequest'
+      responses:
+        '201':
+          description: Usuario registrado exitosamente
+        '400':
+          description: Datos inválidos
+
+  /auth/login:
+    post:
+      tags:
+        - Autenticación
+      summary: Iniciar sesión
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Autenticación exitosa
+        '401':
+          description: Credenciales inválidas
+
+  /auth/perfil:
+    get:
+      tags:
+        - Autenticación
+      summary: Obtener perfil del usuario autenticado
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Perfil obtenido exitosamente
+        '401':
+          description: No autorizado
+
+  /usuarios:
+    get:
+      tags:
+        - Usuarios
+      summary: Listar usuarios (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pagina
+          in: query
+          schema: {type: integer, default: 1}
+        - name: limite
+          in: query
+          schema: {type: integer, default: 20}
+        - name: rol
+          in: query
+          schema: {type: string, enum: [ADMIN, INSTRUCTOR, ESTUDIANTE]}
+      responses:
+        '200': {description: Lista de usuarios}
+        '403': {description: Acceso denegado}
+
+  /usuarios/{id}/rol:
+    patch:
+      tags:
+        - Usuarios
+      summary: Cambiar rol de un usuario (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: integer}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CambiarRolRequest'
+      responses:
+        '200': {description: Rol actualizado}
+        '404': {description: Usuario no encontrado}
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    RegistroRequest:
+      type: object
+      required:
+        - nombre
+        - correo
+        - contrasena
+      properties:
+        nombre:
+          type: string
+          minLength: 2
+          maxLength: 100
+        correo:
+          type: string
+          format: email
+        contrasena:
+          type: string
+          minLength: 8
+        rol:
+          type: string
+          enum: [ADMIN, INSTRUCTOR, ESTUDIANTE]
+          default: ESTUDIANTE
+
+    LoginRequest:
+      type: object
+      required:
+        - correo
+        - contrasena
+      properties:
+        correo:
+          type: string
+          format: email
+        contrasena:
+          type: string
+          minLength: 1
+
+    CambiarRolRequest:
+      type: object
+      required: [rol]
+      properties:
+        rol:
+          type: string
+          enum: [ADMIN, INSTRUCTOR, ESTUDIANTE]

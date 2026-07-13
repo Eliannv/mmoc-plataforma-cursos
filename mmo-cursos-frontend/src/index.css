@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+:root {
+  --color-brand-dark: #250935;
+  --color-primary: #55307E;
+  --color-secondary: #80498F;
+  --color-accent: #ED932C;
+  --color-soft-lavender: #AD98C4;
+  --color-soft-lilac: #D5B8DC;
+  --color-neutral-text: #6F6F6F;
+
+  --color-success: #16a34a;
+  --color-error: #dc2626;
+
+  --background: #ffffff;
+  --foreground: var(--color-brand-dark);
+  --muted: #f5f5f5;
+  --muted-foreground: var(--color-neutral-text);
+  --border: #e5e7eb;
+  --ring: var(--color-primary);
+  --radius: 0.5rem;
+}
+
+@theme {
+  --color-brand-dark: #250935;
+  --color-primary: #55307E;
+  --color-secondary: #80498F;
+  --color-accent: #ED932C;
+  --color-soft-lavender: #AD98C4;
+  --color-soft-lilac: #D5B8DC;
+  --color-neutral-text: #6F6F6F;
+
+  --color-success: #16a34a;
+  --color-error: #dc2626;
+
+  --color-background: #ffffff;
+  --color-foreground: #250935;
+  --color-muted: #f5f5f5;
+  --color-muted-foreground: #6F6F6F;
+  --color-border: #e5e7eb;
+  --color-ring: #55307E;
+
+  --font-family-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+}

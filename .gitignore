@@ -1,0 +1,9 @@
+# Dependencias
+node_modules/
+
+# Variables de entorno
+.env
+
+# Archivos de build de React
+dist/
+build/

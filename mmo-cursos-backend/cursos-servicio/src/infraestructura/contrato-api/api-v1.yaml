@@ -1,0 +1,519 @@
+openapi: 3.0.0
+
+info:
+  title: API de Cursos — MMO
+  version: 1.0.0
+  description: Contrato API para gestión de cursos, secciones, contenido y quizzes.
+
+servers:
+  - url: http://localhost:3002/api/v1
+
+tags:
+  - name: Categorías
+  - name: Cursos
+  - name: Secciones
+  - name: Ítems de Contenido
+  - name: Quizzes
+  - name: Videos
+
+paths:
+  /categorias:
+    get:
+      tags: [Categorías]
+      summary: Listar categorías (público)
+      responses:
+        '200': {description: Lista de categorías}
+    post:
+      tags: [Categorías]
+      summary: Crear categoría (admin)
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CategoriaRequest'}
+      responses:
+        '201': {description: Categoría creada}
+        '400': {description: Datos inválidos}
+
+  /categorias/{id}:
+    get:
+      tags: [Categorías]
+      summary: Obtener categoría por ID
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200': {description: Categoría encontrada}
+        '404': {description: No encontrada}
+    put:
+      tags: [Categorías]
+      summary: Actualizar categoría (admin)
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CategoriaRequest'}
+      responses:
+        '200': {description: Actualizada}
+    delete:
+      tags: [Categorías]
+      summary: Eliminar categoría (admin)
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200': {description: Eliminada}
+
+  /cursos:
+    get:
+      tags: [Cursos]
+      summary: Listar cursos
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id_categoria, in: query, schema: {type: integer}}
+        - {name: estado, in: query, schema: {type: string, enum: [BORRADOR, PUBLICADO, INACTIVO]}}
+      responses:
+        '200': {description: Lista de cursos}
+    post:
+      tags: [Cursos]
+      summary: Crear curso (instructor/admin)
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CursoRequest'}
+      responses:
+        '201': {description: Curso creado}
+
+  /cursos/publicos:
+    get:
+      tags: [Cursos]
+      summary: Listar cursos publicados (público, sin auth)
+      parameters:
+        - {name: id_categoria, in: query, schema: {type: integer}}
+      responses:
+        '200': {description: Lista de cursos publicados}
+
+  /cursos/{id}/publico:
+    get:
+      tags: [Cursos]
+      summary: Obtener curso publicado (público, sin auth)
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200': {description: Curso público encontrado}
+        '404': {description: No encontrado o no publicado}
+
+  /cursos/{id}:
+    get:
+      tags: [Cursos]
+      summary: Obtener curso con secciones
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200': {description: Curso encontrado}
+        '404': {description: No encontrado}
+    put:
+      tags: [Cursos]
+      summary: Actualizar curso
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CursoRequest'}
+      responses:
+        '200': {description: Actualizado}
+    delete:
+      tags: [Cursos]
+      summary: Eliminar curso
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200': {description: Eliminado}
+
+  /cursos/{id}/publicar:
+    put:
+      tags: [Cursos]
+      summary: Publicar curso
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200': {description: Publicado}
+
+  /cursos/{id}/despublicar:
+    put:
+      tags: [Cursos]
+      summary: Despublicar curso
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200': {description: Despublicado}
+
+  /cursos/categoria/{idCategoria}:
+    get:
+      tags: [Cursos]
+      summary: Listar cursos publicados por categoría
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: idCategoria, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200': {description: Lista de cursos publicados}
+
+  /cursos/{idCurso}/secciones:
+    get:
+      tags: [Secciones]
+      summary: Listar secciones de un curso
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: idCurso, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200': {description: Secciones del curso}
+    post:
+      tags: [Secciones]
+      summary: Crear sección en un curso
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: idCurso, in: path, required: true, schema: {type: integer}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/SeccionRequest'}
+      responses:
+        '201': {description: Sección creada}
+
+  /secciones/{id}:
+    get:
+      tags: [Secciones]
+      summary: Obtener sección por ID
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200': {description: Sección encontrada}
+    put:
+      tags: [Secciones]
+      summary: Actualizar sección
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/SeccionRequest'}
+      responses:
+        '200': {description: Actualizada}
+    delete:
+      tags: [Secciones]
+      summary: Eliminar sección
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200': {description: Eliminada}
+
+  /secciones/{idSeccion}/items:
+    get:
+      tags: [Ítems de Contenido]
+      summary: Listar ítems de una sección
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: idSeccion, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200': {description: Ítems de la sección}
+    post:
+      tags: [Ítems de Contenido]
+      summary: Crear ítem en una sección
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: idSeccion, in: path, required: true, schema: {type: integer}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ItemContenidoRequest'}
+      responses:
+        '201': {description: Ítem creado}
+
+  /items/{id}:
+    get:
+      tags: [Ítems de Contenido]
+      summary: Obtener ítem por ID
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200': {description: Ítem encontrado}
+    put:
+      tags: [Ítems de Contenido]
+      summary: Actualizar ítem
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ItemContenidoRequest'}
+      responses:
+        '200': {description: Actualizado}
+    delete:
+      tags: [Ítems de Contenido]
+      summary: Eliminar ítem
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200': {description: Eliminado}
+
+  /quizzes/item/{idItem}:
+    get:
+      tags: [Quizzes]
+      summary: Obtener quiz por ID de ítem (admin/instructor)
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: idItem, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200': {description: Quiz encontrado para este ítem}
+        '404': {description: No hay quiz para este ítem}
+
+  /quizzes/{idQuiz}/preguntas:
+    get:
+      tags: [Quizzes]
+      summary: Obtener quiz con todas sus preguntas (instructor)
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: idQuiz, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200': {description: Quiz con preguntas}
+    post:
+      tags: [Quizzes]
+      summary: Agregar pregunta al quiz
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: idQuiz, in: path, required: true, schema: {type: integer}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/PreguntaRequest'}
+      responses:
+        '201': {description: Pregunta agregada}
+
+  /quizzes/{idQuiz}/preguntas/aleatorias:
+    get:
+      tags: [Quizzes]
+      summary: Obtener 5 preguntas aleatorias para un intento (estudiante)
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: idQuiz, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200': {description: Preguntas seleccionadas}
+
+  /quizzes/{idQuiz}/preguntas/{idPregunta}:
+    delete:
+      tags: [Quizzes]
+      summary: Eliminar pregunta del quiz
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: idQuiz, in: path, required: true, schema: {type: integer}}
+        - {name: idPregunta, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200': {description: Pregunta eliminada}
+
+  /videos/{idItem}/url-subida:
+    get:
+      tags: [Videos]
+      summary: Solicitar URL prefirmada PUT para subida directa a MinIO (instructor)
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: idItem, in: path, required: true, schema: {type: integer}}
+        - {name: content_type, in: query, schema: {type: string, default: 'video/mp4'}}
+      responses:
+        '200': {description: URL de subida generada}
+        '400': {description: Ítem no encontrado o video ya confirmado}
+
+  /videos/{idItem}/confirmar:
+    post:
+      tags: [Videos]
+      summary: Confirmar subida y validar duración con ffprobe (instructor)
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: idItem, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200': {description: Video validado y listo}
+        '422': {description: Duración inválida o archivo corrupto}
+
+  /videos/{idItem}/url-descarga:
+    get:
+      tags: [Videos]
+      summary: Obtener URL prefirmada GET para reproducción (estudiante)
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: idItem, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200': {description: URL de descarga generada}
+        '404': {description: Video no disponible}
+
+  /documentos/{idItem}/url-subida:
+    get:
+      tags: [Documentos]
+      summary: Solicitar URL prefirmada PUT para subir documento a MinIO (instructor)
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: idItem, in: path, required: true, schema: {type: integer}}
+        - {name: content_type, in: query, schema: {type: string, default: 'application/pdf'}}
+        - {name: nombre_archivo, in: query, schema: {type: string}}
+      responses:
+        '200': {description: URL de subida generada}
+
+  /documentos/{idItem}/confirmar:
+    post:
+      tags: [Documentos]
+      summary: Confirmar subida del documento (instructor)
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: idItem, in: path, required: true, schema: {type: integer}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nombre_archivo]
+              properties:
+                nombre_archivo: {type: string, minLength: 1}
+      responses:
+        '200': {description: Documento confirmado}
+
+  /documentos/{idItem}/url-descarga:
+    get:
+      tags: [Documentos]
+      summary: Obtener URL prefirmada GET para descargar documento (estudiante)
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: idItem, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200': {description: URL de descarga generada}
+
+  /actividades/{idItem}:
+    put:
+      tags: [Actividades]
+      summary: Crear/actualizar configuración de actividad interactiva (instructor)
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: idItem, in: path, required: true, schema: {type: integer}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActividadRequest'
+      responses:
+        '200': {description: Actividad actualizada}
+
+  /quizzes/{idQuiz}/validar:
+    post:
+      tags: [Quizzes]
+      summary: Validar respuestas contra el banco de preguntas (BFF interno)
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: idQuiz, in: path, required: true, schema: {type: integer}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [respuestas]
+              properties:
+                respuestas:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required: [id_pregunta, id_opcion_seleccionada]
+                    properties:
+                      id_pregunta: {type: integer}
+                      id_opcion_seleccionada: {type: integer}
+      responses:
+        '200': {description: Resultado de validación por pregunta}
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    CategoriaRequest:
+      type: object
+      required: [nombre]
+      properties:
+        nombre: {type: string, minLength: 2, maxLength: 100}
+        descripcion: {type: string}
+        estado: {type: string, enum: [ACTIVO, INACTIVO]}
+
+    CursoRequest:
+      type: object
+      required: [titulo, nivel, id_categoria]
+      properties:
+        titulo: {type: string, minLength: 3, maxLength: 200}
+        descripcion: {type: string}
+        nivel: {type: string, enum: [BASICO, INTERMEDIO]}
+        id_categoria: {type: integer}
+
+    SeccionRequest:
+      type: object
+      required: [titulo]
+      properties:
+        titulo: {type: string, minLength: 2, maxLength: 200}
+        orden: {type: integer, minimum: 1}
+
+    ItemContenidoRequest:
+      type: object
+      required: [titulo, tipo]
+      properties:
+        titulo: {type: string, minLength: 2, maxLength: 200}
+        tipo: {type: string, enum: [VIDEO, DOCUMENTO, ACTIVIDAD_INTERACTIVA, QUIZ]}
+        orden: {type: integer, minimum: 1}
+
+    ActividadRequest:
+      type: object
+      required: [tipo, config]
+      properties:
+        tipo:
+          type: string
+          enum: [escenario_decision, verdadero_falso, reflexion_abierta]
+        config:
+          type: object
+
+    PreguntaRequest:
+      type: object
+      required: [enunciado, opciones]
+      properties:
+        enunciado: {type: string, minLength: 5}
+        orden: {type: integer, minimum: 1}
+        opciones:
+          type: array
+          minItems: 2
+          items:
+            type: object
+            required: [texto, es_correcta]
+            properties:
+              texto: {type: string, minLength: 1}
+              es_correcta: {type: boolean}

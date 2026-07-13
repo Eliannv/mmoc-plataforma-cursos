@@ -1,0 +1,448 @@
+openapi: 3.0.0
+
+info:
+  title: BFF API — MMO Cursos
+  version: 1.0.0
+  description: Backend for Frontend. Punto de entrada único para el cliente.
+
+servers:
+  - url: http://localhost:3000/api/v1
+
+tags:
+  - name: Autenticación
+  - name: Categorías
+  - name: Cursos
+  - name: Secciones
+  - name: Ítems
+  - name: Quizzes
+  - name: Inscripciones
+  - name: Progreso
+  - name: Intentos
+
+paths:
+  /auth/registro:
+    post:
+      tags: [Autenticación]
+      summary: Registrar usuario
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nombre, correo, contrasena]
+              properties:
+                nombre: {type: string}
+                correo: {type: string, format: email}
+                contrasena: {type: string, minLength: 8}
+                rol: {type: string, enum: [ADMIN, INSTRUCTOR, ESTUDIANTE]}
+      responses:
+        '201': {description: Usuario registrado}
+
+  /auth/login:
+    post:
+      tags: [Autenticación]
+      summary: Iniciar sesión
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [correo, contrasena]
+              properties:
+                correo: {type: string, format: email}
+                contrasena: {type: string}
+      responses:
+        '200': {description: Token JWT}
+
+  /auth/perfil:
+    get:
+      tags: [Autenticación]
+      summary: Perfil del usuario autenticado
+      security: [{bearerAuth: []}]
+      responses:
+        '200': {description: Perfil}
+
+  /categorias:
+    get:
+      tags: [Categorías]
+      summary: Listar categorías (público)
+      responses:
+        '200': {description: Lista de categorías}
+    post:
+      tags: [Categorías]
+      summary: Crear categoría (admin)
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nombre]
+              properties:
+                nombre: {type: string}
+                descripcion: {type: string}
+      responses:
+        '201': {description: Categoría creada}
+
+  /cursos:
+    get:
+      tags: [Cursos]
+      summary: Listar cursos
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id_categoria, in: query, schema: {type: integer}}
+        - {name: estado, in: query, schema: {type: string}}
+      responses:
+        '200': {description: Cursos}
+    post:
+      tags: [Cursos]
+      summary: Crear curso
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [titulo, nivel, id_categoria]
+              properties:
+                titulo: {type: string}
+                descripcion: {type: string}
+                nivel: {type: string, enum: [BASICO, INTERMEDIO]}
+                id_categoria: {type: integer}
+      responses:
+        '201': {description: Curso creado}
+
+  /cursos/categoria/{idCategoria}:
+    get:
+      tags: [Cursos]
+      summary: Cursos publicados por categoría
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: idCategoria, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200': {description: Cursos publicados}
+
+  /cursos/publicos:
+    get:
+      tags: [Cursos]
+      summary: Listar cursos publicados (público, sin auth)
+      parameters:
+        - {name: id_categoria, in: query, schema: {type: integer}}
+      responses:
+        '200': {description: Lista de cursos publicados}
+
+  /cursos/publico/{id}:
+    get:
+      tags: [Cursos]
+      summary: Obtener curso publicado (público, sin auth)
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200': {description: Curso público encontrado}
+        '404': {description: No encontrado o no publicado}
+
+  /cursos/{id}:
+    get:
+      tags: [Cursos]
+      summary: Obtener curso con secciones
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200': {description: Curso}
+    put:
+      tags: [Cursos]
+      summary: Actualizar curso
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        '200': {description: Actualizado}
+
+  /cursos/{id}/publicar:
+    put:
+      tags: [Cursos]
+      summary: Publicar curso
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200': {description: Publicado}
+
+  /cursos/{id}/despublicar:
+    put:
+      tags: [Cursos]
+      summary: Despublicar curso
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200': {description: Despublicado}
+
+  /cursos/{idCurso}/secciones:
+    get:
+      tags: [Secciones]
+      summary: Listar secciones
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: idCurso, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200': {description: Secciones}
+    post:
+      tags: [Secciones]
+      summary: Crear sección
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: idCurso, in: path, required: true, schema: {type: integer}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [titulo]
+              properties:
+                titulo: {type: string}
+                orden: {type: integer}
+      responses:
+        '201': {description: Sección creada}
+
+  /secciones/{idSeccion}/items:
+    get:
+      tags: [Ítems]
+      summary: Listar ítems de una sección
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: idSeccion, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200': {description: Ítems}
+    post:
+      tags: [Ítems]
+      summary: Crear ítem
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: idSeccion, in: path, required: true, schema: {type: integer}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [titulo, tipo]
+              properties:
+                titulo: {type: string}
+                tipo: {type: string, enum: [VIDEO, DOCUMENTO, ACTIVIDAD_INTERACTIVA, QUIZ]}
+      responses:
+        '201': {description: Ítem creado}
+
+  /quizzes/{idQuiz}/preguntas:
+    post:
+      tags: [Quizzes]
+      summary: Agregar pregunta al quiz
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: idQuiz, in: path, required: true, schema: {type: integer}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enunciado, opciones]
+              properties:
+                enunciado: {type: string}
+                opciones:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      texto: {type: string}
+                      es_correcta: {type: boolean}
+      responses:
+        '201': {description: Pregunta agregada}
+
+  /inscripciones:
+    get:
+      tags: [Inscripciones]
+      summary: Mis inscripciones
+      security: [{bearerAuth: []}]
+      responses:
+        '200': {description: Inscripciones}
+    post:
+      tags: [Inscripciones]
+      summary: Inscribirse a un curso
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id_curso]
+              properties:
+                id_curso: {type: integer}
+      responses:
+        '201': {description: Inscrito}
+
+  /inscripciones/cursos/{idCurso}/progreso:
+    get:
+      tags: [Inscripciones]
+      summary: Progreso en un curso (reanudar donde quedó)
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: idCurso, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200': {description: Progreso}
+
+  /progreso:
+    post:
+      tags: [Progreso]
+      summary: Marcar avance de un ítem
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id_inscripcion, id_item_contenido]
+              properties:
+                id_inscripcion: {type: integer}
+                id_item_contenido: {type: integer}
+                segundos_vistos: {type: integer, minimum: 0}
+      responses:
+        '200': {description: Avance marcado}
+
+  /intentos/iniciar:
+    post:
+      tags: [Intentos]
+      summary: Iniciar intento de quiz (BFF orquesta selección de preguntas)
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id_inscripcion, id_quiz]
+              properties:
+                id_inscripcion: {type: integer}
+                id_quiz: {type: integer}
+      responses:
+        '201': {description: Intento iniciado con 5 preguntas}
+
+  /intentos/{id}/respuestas:
+    post:
+      tags: [Intentos]
+      summary: Registrar respuestas y calcular puntaje
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [respuestas, id_quiz]
+              properties:
+                id_quiz: {type: integer}
+                respuestas:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required: [id_pregunta, id_opcion_seleccionada]
+                    properties:
+                      id_pregunta: {type: integer}
+                      id_opcion_seleccionada: {type: integer}
+      responses:
+        '200': {description: Puntaje calculado}
+
+  /usuarios:
+    get:
+      tags: [Usuarios]
+      summary: Listar usuarios (admin)
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: pagina, in: query, schema: {type: integer, default: 1}}
+        - {name: limite, in: query, schema: {type: integer, default: 20}}
+        - {name: rol, in: query, schema: {type: string, enum: [ADMIN, INSTRUCTOR, ESTUDIANTE]}}
+      responses:
+        '200': {description: Lista de usuarios}
+
+  /usuarios/{id}/rol:
+    patch:
+      tags: [Usuarios]
+      summary: Cambiar rol de usuario (admin)
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rol]
+              properties:
+                rol: {type: string, enum: [ADMIN, INSTRUCTOR, ESTUDIANTE]}
+      responses:
+        '200': {description: Rol actualizado}
+
+  /documentos/{idItem}/url-subida:
+    get:
+      tags: [Documentos]
+      summary: Solicitar URL prefirmada PUT para subir documento
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: idItem, in: path, required: true, schema: {type: integer}}
+        - {name: nombre_archivo, in: query, schema: {type: string}}
+        - {name: content_type, in: query, schema: {type: string, default: 'application/pdf'}}
+      responses:
+        '200': {description: URL de subida generada}
+
+  /documentos/{idItem}/confirmar:
+    post:
+      tags: [Documentos]
+      summary: Confirmar que el documento fue subido
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: idItem, in: path, required: true, schema: {type: integer}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nombre_archivo]
+              properties:
+                nombre_archivo: {type: string}
+      responses:
+        '200': {description: Documento confirmado}
+
+  /documentos/{idItem}/url-descarga:
+    get:
+      tags: [Documentos]
+      summary: Obtener URL prefirmada GET para descargar documento
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: idItem, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200': {description: URL de descarga generada}
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

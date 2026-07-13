@@ -1,0 +1,208 @@
+services:
+  # ── Bases de datos ──────────────────────────────────────────
+  auth-db:
+    image: postgres:17
+    container_name: auth-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: auth_db
+    ports:
+      - "5435:5432"
+    volumes:
+      - auth_data:/var/lib/postgresql/data
+    networks:
+      - mmo-net
+
+  cursos-db:
+    image: postgres:17
+    container_name: cursos-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: cursos_db
+    ports:
+      - "5436:5432"
+    volumes:
+      - cursos_data:/var/lib/postgresql/data
+    networks:
+      - mmo-net
+
+  # ── Almacenamiento de objetos (MinIO) ───────────────────────
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"   # API S3
+      - "9001:9001"   # Consola web MinIO
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin123}
+      # Habilita CORS a nivel de servidor para todos los buckets (desarrollo)
+      MINIO_API_CORS_ALLOW_ORIGIN: "*"
+    volumes:
+      - minio_data:/data
+    networks:
+      - mmo-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # Servicio de inicialización: crea el bucket al levantar el stack
+  minio-init:
+    image: minio/mc:latest
+    container_name: minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    networks:
+      - mmo-net
+    environment:
+      MINIO_BUCKET: ${MINIO_BUCKET:-mmo-cursos}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin123}
+    entrypoint: >
+      /bin/sh -c "
+        echo '[minio-init] Conectando a MinIO...' &&
+        mc alias set myminio http://minio:9000 $${MINIO_ACCESS_KEY} $${MINIO_SECRET_KEY} &&
+        mc mb --ignore-existing myminio/$${MINIO_BUCKET} &&
+        mc anonymous set none myminio/$${MINIO_BUCKET} &&
+        echo '[minio-init] CORS manejado por MINIO_API_CORS_ALLOW_ORIGIN (docker-compose).' &&
+        echo '[minio-init] Bucket '$${MINIO_BUCKET}' listo.'
+      "
+
+  progreso-db:
+    image: postgres:17
+    container_name: progreso-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: progreso_db
+    ports:
+      - "5437:5432"
+    volumes:
+      - progreso_data:/var/lib/postgresql/data
+    networks:
+      - mmo-net
+
+  adminer:
+    image: adminer
+    container_name: adminer
+    ports:
+      - "8080:8080"
+    networks:
+      - mmo-net
+
+  # ── Microservicios ──────────────────────────────────────────
+  auth-servicio:
+    build: ./auth-servicio
+    container_name: auth-servicio
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: 3001
+      DB_HOST: auth-db
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: admin
+      DB_NAME: auth_db
+      JWT_SECRET: ${JWT_SECRET:-mmo_jwt_secret_cambiar_en_produccion}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-24h}
+    depends_on:
+      - auth-db
+    networks:
+      - mmo-net
+
+  cursos-servicio:
+    build: ./cursos-servicio
+    container_name: cursos-servicio
+    ports:
+      - "3002:3002"
+    environment:
+      PORT: 3002
+      DB_HOST: cursos-db
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: admin
+      DB_NAME: cursos_db
+      JWT_SECRET: ${JWT_SECRET:-mmo_jwt_secret_cambiar_en_produccion}
+      # Almacenamiento — cambiar a "minio" para usar MinIO real
+      STORAGE_PROVIDER: ${STORAGE_PROVIDER:-minio}
+      MINIO_ENDPOINT: minio
+      MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:-localhost}
+      MINIO_PORT: 9000
+      MINIO_PUBLIC_PORT: 9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin123}
+      MINIO_BUCKET: ${MINIO_BUCKET:-mmo-cursos}
+      MINIO_USE_SSL: "false"
+    depends_on:
+      - cursos-db
+      - minio
+    networks:
+      - mmo-net
+
+  progreso-servicio:
+    build: ./progreso-servicio
+    container_name: progreso-servicio
+    ports:
+      - "3003:3003"
+    environment:
+      PORT: 3003
+      DB_HOST: progreso-db
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: admin
+      DB_NAME: progreso_db
+      JWT_SECRET: ${JWT_SECRET:-mmo_jwt_secret_cambiar_en_produccion}
+    depends_on:
+      - progreso-db
+    networks:
+      - mmo-net
+
+  bff-servicio:
+    build: ./bff-servicio
+    container_name: bff-servicio
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      JWT_SECRET: ${JWT_SECRET:-mmo_jwt_secret_cambiar_en_produccion}
+      AUTH_SERVICIO_URL: http://auth-servicio:3001
+      CURSOS_SERVICIO_URL: http://cursos-servicio:3002
+      PROGRESO_SERVICIO_URL: http://progreso-servicio:3003
+    depends_on:
+      - auth-servicio
+      - cursos-servicio
+      - progreso-servicio
+    networks:
+      - mmo-net
+
+  # ── Frontend (build de producción con nginx) ──────────────────
+  # En desarrollo: correr fuera de Docker con npm run dev en ../mmo-cursos-frontend
+  # En producción: nginx sirve la SPA y proxea /api al BFF
+  frontend:
+    build:
+      context: ../mmo-cursos-frontend
+      dockerfile: Dockerfile
+    container_name: mmo-frontend
+    ports:
+      - "8090:80"
+    depends_on:
+      - bff-servicio
+    networks:
+      - mmo-net
+
+networks:
+  mmo-net:
+    driver: bridge
+
+volumes:
+  auth_data:
+  cursos_data:
+  progreso_data:
+  minio_data:
